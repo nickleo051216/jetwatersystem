@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Calculator, FileText, Download, Building2, Droplets, ArrowRight, Check, X, Edit2, RotateCcw, Link, Unlink, Activity } from 'lucide-react';
-import SankeyChart from './components/SankeyChart';
 import ProcessFlowDiagram from './components/ProcessFlowDiagram';
 import ReactFlowDiagram from './components/ReactFlowDiagram';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
