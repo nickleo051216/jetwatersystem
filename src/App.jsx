@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Calculator, FileText, Download, Building2, Droplets, ArrowRight, Check, X, Edit2, RotateCcw, Link, Unlink } from 'lucide-react';
+import { Plus, Trash2, Calculator, FileText, Download, Building2, Droplets, ArrowRight, Check, X, Edit2, RotateCcw, Link, Unlink, Activity } from 'lucide-react';
+import SankeyChart from './components/SankeyChart';
 
 // ============================================
 // 事業類別與申報項目資料庫
@@ -90,13 +91,13 @@ export default function WastewaterCalculator() {
   const [lines, setLines] = useState([]);
   const [selectedLineId, setSelectedLineId] = useState(null);
   const [selectedUnitId, setSelectedUnitId] = useState(null);
-  
+
   // 新增項目狀態
   const [showAddItem, setShowAddItem] = useState(false);
   const [newItemName, setNewItemName] = useState('');
   const [newItemUnit, setNewItemUnit] = useState('mg/L');
   const [newItemConc, setNewItemConc] = useState(0);
-  
+
   // 新增進流 Modal 狀態
   const [showInletModal, setShowInletModal] = useState(false);
 
@@ -209,7 +210,7 @@ export default function WastewaterCalculator() {
           concentrations: {},
           additionalInlets: []
         };
-        
+
         reportItems.filter(item => item.enabled).forEach(item => {
           const prevUnit = line.units[line.units.length - 1];
           const inletConc = prevUnit ? (prevUnit.concentrations[item.name]?.outlet || item.concentration) : item.concentration;
@@ -217,7 +218,7 @@ export default function WastewaterCalculator() {
           const outletConc = item.isRange ? inletConc : Number((inletConc * (1 - removalRate / 100)).toFixed(3));
           newUnit.concentrations[item.name] = { inlet: inletConc, outlet: outletConc, removalRate };
         });
-        
+
         return { ...line, units: [...line.units, newUnit] };
       }
       return line;
@@ -460,7 +461,7 @@ export default function WastewaterCalculator() {
         const updatedUnits = line.units.map((unit) => {
           const updatedConcentrations = {};
           const totalInletFlow = calculateTotalInletFlow(unit);
-          
+
           reportItems.filter(item => item.enabled).forEach(item => {
             const mainInletConc = prevUnit ? (prevUnit.concentrations[item.name]?.outlet || item.concentration) : item.concentration;
             let mixedInletConc = mainInletConc;
@@ -473,7 +474,7 @@ export default function WastewaterCalculator() {
             const outletConc = item.isRange ? mixedInletConc : Number((mixedInletConc * (1 - removalRate / 100)).toFixed(3));
             updatedConcentrations[item.name] = { inlet: mixedInletConc, outlet: outletConc, removalRate };
           });
-          
+
           prevUnit = { ...unit, concentrations: updatedConcentrations };
           return { ...unit, concentrations: updatedConcentrations };
         });
@@ -562,7 +563,7 @@ export default function WastewaterCalculator() {
       {/* Step Indicator */}
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="flex items-center justify-center gap-4 mb-8">
-          {[{ step: 1, label: '設施資訊', icon: Building2 }, { step: 2, label: '申報項目', icon: FileText }, { step: 3, label: '處理流程', icon: Calculator }].map((item, index) => (
+          {[{ step: 1, label: '設施資訊', icon: Building2 }, { step: 2, label: '申報項目', icon: FileText }, { step: 3, label: '處理流程', icon: Calculator }, { step: 4, label: '水量平衡圖', icon: Activity }].map((item, index) => (
             <React.Fragment key={item.step}>
               <button onClick={() => setCurrentStep(item.step)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${currentStep === item.step ? 'bg-cyan-500/20 border border-cyan-400/50 text-cyan-400' : currentStep > item.step ? 'bg-green-500/20 border border-green-400/50 text-green-400' : 'bg-slate-800/50 border border-slate-600/50 text-slate-400'}`}>
@@ -570,7 +571,7 @@ export default function WastewaterCalculator() {
                 <span className="text-sm font-medium">{item.label}</span>
                 {currentStep > item.step && <Check className="w-4 h-4" />}
               </button>
-              {index < 2 && <ArrowRight className={`w-4 h-4 ${currentStep > item.step ? 'text-green-400' : 'text-slate-600'}`} />}
+              {index < 3 && <ArrowRight className={`w-4 h-4 ${currentStep > item.step ? 'text-green-400' : 'text-slate-600'}`} />}
             </React.Fragment>
           ))}
         </div>
@@ -681,7 +682,7 @@ export default function WastewaterCalculator() {
                         {categoryItems.map(item => (
                           <tr key={item.id} className={`border-b border-slate-700/50 ${!item.enabled ? 'opacity-50' : ''}`}>
                             <td className="py-2 px-3">
-                              <button onClick={() => setReportItems(reportItems.map(i => i.id === item.id ? {...i, enabled: !i.enabled} : i))}
+                              <button onClick={() => setReportItems(reportItems.map(i => i.id === item.id ? { ...i, enabled: !i.enabled } : i))}
                                 className={`w-6 h-6 rounded flex items-center justify-center ${item.enabled ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-slate-500'}`}>
                                 {item.enabled && <Check className="w-4 h-4" />}
                               </button>
@@ -690,7 +691,7 @@ export default function WastewaterCalculator() {
                             <td className="py-2 px-3">
                               {item.isRange ? <span className="text-slate-400">{item.concentration}</span> : (
                                 <input type="number" value={item.concentration}
-                                  onChange={(e) => setReportItems(reportItems.map(i => i.id === item.id ? {...i, concentration: Number(e.target.value)} : i))}
+                                  onChange={(e) => setReportItems(reportItems.map(i => i.id === item.id ? { ...i, concentration: Number(e.target.value) } : i))}
                                   className="w-24 bg-slate-900 border border-slate-600 rounded px-2 py-1 text-white focus:outline-none focus:border-cyan-400" />
                               )}
                             </td>
@@ -726,7 +727,7 @@ export default function WastewaterCalculator() {
                 <h3 className="font-semibold flex items-center gap-2"><Droplets className="w-4 h-4 text-cyan-400" />處理線</h3>
                 <button onClick={addLine} className="p-2 bg-cyan-500/20 border border-cyan-400/50 rounded-lg text-cyan-400 hover:bg-cyan-500/30"><Plus className="w-4 h-4" /></button>
               </div>
-              
+
               {lines.length === 0 ? (
                 <div className="text-center py-8 text-slate-500"><p className="text-sm">尚未建立處理線</p></div>
               ) : (
@@ -759,12 +760,12 @@ export default function WastewaterCalculator() {
                   ))}
                 </div>
               )}
-              
+
               {selectedLineId && (
                 <div className="mt-4 pt-4 border-t border-slate-700">
                   <h4 className="text-sm text-slate-400 mb-2">新增處理單元</h4>
-                  <select 
-                    onChange={(e) => { if(e.target.value) { addUnit(selectedLineId, e.target.value); e.target.value = ''; } }}
+                  <select
+                    onChange={(e) => { if (e.target.value) { addUnit(selectedLineId, e.target.value); e.target.value = ''; } }}
                     className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan-400"
                     defaultValue=""
                   >
@@ -828,7 +829,7 @@ export default function WastewaterCalculator() {
                       <button onClick={() => removeUnit(selectedLineId, selectedUnitId)} className="text-red-400 hover:text-red-300 p-2"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </div>
-                  
+
                   {/* 流量設定 */}
                   <div className="grid grid-cols-3 gap-4 mb-4 p-3 bg-slate-900/50 rounded-lg">
                     <div>
@@ -853,7 +854,7 @@ export default function WastewaterCalculator() {
                       <div className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-cyan-400 font-medium">{calculateTotalInletFlow(selectedUnit)} CMD</div>
                     </div>
                   </div>
-                  
+
                   {/* ==================== 進流與出流並排布局 ==================== */}
                   <div className="flex gap-4">
                     {/* 左側：所有進流（新增的在上方） */}
@@ -892,7 +893,7 @@ export default function WastewaterCalculator() {
                                       <td className="py-1 px-2">{item.name}<span className="text-slate-500 ml-1">({item.unit})</span></td>
                                       <td className="py-1 px-2 text-center">
                                         {item.isRange ? '-' : (
-                                          <input type="number" value={conc} 
+                                          <input type="number" value={conc}
                                             onChange={(e) => updateAdditionalInlet(selectedLineId, selectedUnitId, inlet.id, 'concentration', { itemName: item.name, conc: e.target.value })}
                                             className="w-16 bg-slate-800 border border-orange-500/50 rounded px-1 py-0.5 text-center text-white text-xs focus:outline-none focus:border-orange-400" />
                                         )}
@@ -1001,13 +1002,13 @@ export default function WastewaterCalculator() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="mt-4 p-3 bg-slate-900/50 rounded-lg text-xs text-slate-400">
                     <p>📝 <strong>v2.4 布局：</strong>進流在左側（新增的往上疊加）｜ 出流在右側並排 ｜ 進流類型：🔄RAS 🧪化學藥劑 💧上清液 🔀其他處理線 📝自訂</p>
                   </div>
                 </div>
               )}
-              
+
               <div className="flex justify-between">
                 <button onClick={() => setCurrentStep(2)} className="px-6 py-3 bg-slate-700 rounded-lg font-medium hover:bg-slate-600">上一步</button>
                 <button className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg font-medium hover:opacity-90"
@@ -1023,12 +1024,12 @@ export default function WastewaterCalculator() {
       <footer className="mt-12 py-6 border-t border-slate-700/50 text-center text-slate-500 text-sm">
         <p>Nick Chang｜ZN Studio</p>
         <p className="mt-1">
-          <a href="mailto:nickleo051216@gmail.com" className="hover:text-cyan-400">nickleo051216@gmail.com</a> ｜ 
+          <a href="mailto:nickleo051216@gmail.com" className="hover:text-cyan-400">nickleo051216@gmail.com</a> ｜
           <a href="tel:0932-684-051" className="hover:text-cyan-400">0932-684-051</a>
         </p>
         <p className="mt-1">
-          <a href="https://portaly.cc/zn.studio" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400">ZN Studio</a> ｜ 
-          <a href="https://www.threads.com/@nickai216" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400">Threads @nickai216</a> ｜ 
+          <a href="https://portaly.cc/zn.studio" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400">ZN Studio</a> ｜
+          <a href="https://www.threads.com/@nickai216" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400">Threads @nickai216</a> ｜
           <a href="https://reurl.cc/1OZNAY" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400">Line 社群</a>
         </p>
       </footer>

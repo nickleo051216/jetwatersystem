@@ -1,0 +1,42 @@
+
+        {/* Step 4 - 水量平衡圖 */}
+        {currentStep === 4 && (
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold flex items-center gap-2"><Activity className="w-5 h-5 text-cyan-400" />水量平衡圖 (Sankey Diagram)</h2>
+              <div className="flex gap-2">
+                 <button onClick={() => {}} className="flex items-center gap-2 px-3 py-1.5 bg-slate-700/50 border border-slate-600 rounded-lg text-slate-400 text-sm hover:bg-slate-700">
+                  <Download className="w-4 h-4" /> 匯出圖表
+                 </button>
+              </div>
+            </div>
+            
+            <div className="mb-6 p-4 bg-blue-500/10 border border-blue-400/30 rounded-lg flex items-start gap-3">
+              <div className="p-2 bg-blue-500/20 rounded-lg"><Activity className="w-5 h-5 text-blue-400" /></div>
+              <div>
+                <h4 className="font-medium text-blue-400 text-sm mb-1">質量平衡視覺化說明</h4>
+                <p className="text-xs text-slate-400">此圖表由左至右展示水流方向，線條粗細代表流量大小。虛線代表迴流或加藥。</p>
+              </div>
+            </div>
+
+            {lines.length > 0 ? (
+               <div className="overflow-x-auto pb-4">
+                 <SankeyChart lines={lines} width={1000} height={600} />
+               </div>
+            ) : (
+               <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-slate-700 rounded-xl">
+                 <Droplets className="w-12 h-12 text-slate-600 mb-4" />
+                 <p className="text-slate-500 font-medium">尚未建立處理線</p>
+                 <p className="text-slate-600 text-sm mt-2">請先返回「處理流程」建立單元與連接</p>
+                 <button onClick={() => setCurrentStep(3)} className="mt-6 px-6 py-2 bg-cyan-500/20 text-cyan-400 rounded-lg hover:bg-cyan-500/30">前往設定</button>
+               </div>
+            )}
+            
+            <div className="mt-8 flex justify-between pt-6 border-t border-slate-700">
+                <button onClick={() => setCurrentStep(3)} className="px-6 py-3 bg-slate-700 rounded-lg font-medium hover:bg-slate-600">上一步</button>
+                 <button className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-lg font-medium hover:opacity-90 opacity-50 cursor-not-allowed">
+                  匯出報告 <FileText className="w-4 h-4" />
+                </button>
+            </div>
+          </div>
+        )}
