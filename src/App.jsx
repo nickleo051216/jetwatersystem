@@ -3,7 +3,6 @@ import { Plus, Trash2, Calculator, FileText, Download, Building2, Droplets, Arro
 import SankeyChart from './components/SankeyChart';
 import ProcessFlowDiagram from './components/ProcessFlowDiagram';
 import ReactFlowDiagram from './components/ReactFlowDiagram';
-import ProcessBuilder from './components/ProcessBuilder/ProcessBuilder';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -792,131 +791,383 @@ export default function WastewaterCalculator() {
           </div>
         )}
 
-        {/* Step 3: 視覺化流程設計 (GPS-X Style) */}
+        {/* Step 3 */}
         {currentStep === 3 && (
-          <div className="flex flex-col gap-4 h-[850px]">
-            {/* 頂部工具列：處理線管理 */}
-            <div className="flex items-center justify-between bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-              <div className="flex items-center gap-4">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-cyan-400" />
-                  流程設計
-                </h3>
-                <div className="h-6 w-px bg-slate-600"></div>
-                {/* 簡單的處理線切換 (目前 ProcessBuilder 主要操作第一條線，這裡保留擴充性) */}
-                <div className="flex gap-2">
-                  {lines.map(line => (
-                    <button
-                      key={line.id}
-                      onClick={() => setSelectedLineId(line.id)}
-                      className={`px-3 py-1.5 rounded text-sm transition-colors ${selectedLineId === line.id ? 'bg-cyan-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}`}
-                    >
-                      {line.name}
-                    </button>
-                  ))}
-                  <button onClick={addLine} className="p-1.5 bg-slate-700 text-slate-400 rounded hover:bg-slate-600 hover:text-cyan-400">
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* 左側：處理線列表 */}
+            <div className="lg:col-span-1 bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold flex items-center gap-2"><Droplets className="w-4 h-4 text-cyan-400" />處理線</h3>
+                <button onClick={addLine} className="p-2 bg-cyan-500/20 border border-cyan-400/50 rounded-lg text-cyan-400 hover:bg-cyan-500/30"><Plus className="w-4 h-4" /></button>
               </div>
 
-              <div className="text-xs text-slate-500">
-                💡 拖曳左側單元至畫布 • 點擊單元編輯參數
-              </div>
+              {lines.length === 0 ? (
+                <div className="text-center py-8 text-slate-500"><p className="text-sm">尚未建立處理線</p></div>
+              ) : (
+                <div className="space-y-2">
+                  {lines.map(line => (
+                    <div key={line.id} onClick={() => { setSelectedLineId(line.id); setSelectedUnitId(null); }}
+                      className={`p-3 rounded-lg cursor-pointer transition-all ${selectedLineId === line.id ? 'bg-cyan-500/20 border border-cyan-400/50' : 'bg-slate-700/50 border border-transparent hover:bg-slate-700'}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <EditableText value={line.name} onSave={(newName) => updateLineName(line.id, newName)} className="font-medium text-sm" />
+                        <button onClick={(e) => { e.stopPropagation(); removeLine(line.id); }} className="text-red-400 hover:text-red-300"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-500">流量:</span>
+                        <input type="number" value={line.designFlow} onChange={(e) => { e.stopPropagation(); updateLineFlow(line.id, e.target.value); }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-20 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-cyan-400" />
+                        <span className="text-xs text-slate-500">CMD</span>
+                      </div>
+                      {line.units.length > 0 && (
+                        <div className="flex items-center gap-1 mt-2 overflow-x-auto">
+                          {line.units.map((unit, index) => (
+                            <React.Fragment key={unit.id}>
+                              <span className="text-lg" title={unit.name}>{unit.icon}</span>
+                              {index < line.units.length - 1 && <ArrowRight className="w-3 h-3 text-slate-500 flex-shrink-0" />}
+                            </React.Fragment>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {selectedLineId && (
+                <div className="mt-4 pt-4 border-t border-slate-700">
+                  <h4 className="text-sm text-slate-400 mb-2">新增處理單元</h4>
+                  <select
+                    onChange={(e) => { if (e.target.value) { addUnit(selectedLineId, e.target.value); e.target.value = ''; } }}
+                    className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-cyan-400"
+                    defaultValue=""
+                  >
+                    <option value="" disabled>選擇單元類型...</option>
+                    {Object.entries(UNIT_TYPES).map(([type, config]) => (
+                      <option key={type} value={type}>{config.icon} {type}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
-            {/* 核心設計器 */}
-            <ProcessBuilder lines={lines} setLines={setLines} />
+            {/* 右側 */}
+            <div className="lg:col-span-2 space-y-4">
+              {selectedLine && (
+                <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold">{selectedLine.name} - 單元配置</h3>
+                    <button onClick={() => recalculateLine(selectedLineId)}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-cyan-500/20 border border-cyan-400/50 rounded-lg text-cyan-400 text-sm hover:bg-cyan-500/30">
+                      <RotateCcw className="w-4 h-4" />重新計算
+                    </button>
+                  </div>
+                  {selectedLine.units.length === 0 ? (
+                    <div className="text-center py-8 text-slate-500"><p className="text-sm">尚未建立處理單元</p></div>
+                  ) : (
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                      <SortableContext items={selectedLine.units.map(u => u.id)} strategy={horizontalListSortingStrategy}>
+                        <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                          <p className="text-xs text-slate-500 mr-2">拖曳調整順序 →</p>
+                          {selectedLine.units.map((unit, index) => (
+                            <React.Fragment key={unit.id}>
+                              <SortableUnitCard
+                                unit={unit}
+                                index={index}
+                                isSelected={selectedUnitId === unit.id}
+                                onClick={() => setSelectedUnitId(unit.id)}
+                              />
+                              {index < selectedLine.units.length - 1 && <ArrowRight className="w-4 h-4 text-slate-500 flex-shrink-0" />}
+                            </React.Fragment>
+                          ))}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
+                  )}
+                </div>
+              )}
 
-            {/* 底部導航 */}
-            <div className="flex justify-between mt-auto pt-4">
-              <button onClick={() => setCurrentStep(2)} className="px-6 py-3 bg-slate-700 rounded-lg font-medium hover:bg-slate-600">
-                上一步
-              </button>
-              <button onClick={() => setCurrentStep(4)} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-lg font-medium hover:opacity-90">
-                下一步 <ArrowRight className="w-4 h-4" />
-              </button>
+              {selectedUnit && (
+                <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{selectedUnit.icon}</span>
+                      <EditableText value={selectedUnit.name} onSave={(newName) => updateUnitName(selectedLineId, selectedUnit.id, newName)} className="font-semibold" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setShowInletModal(true)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-orange-500/20 border border-orange-400/50 rounded-lg text-orange-400 text-sm hover:bg-orange-500/30">
+                        <Plus className="w-4 h-4" />新增進流
+                      </button>
+                      <button onClick={() => removeUnit(selectedLineId, selectedUnitId)} className="text-red-400 hover:text-red-300 p-2"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+
+                  {/* 流量設定 */}
+                  <div className="grid grid-cols-3 gap-4 mb-4 p-3 bg-slate-900/50 rounded-lg">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs text-slate-400">主進流量 (CMD)</label>
+                        <button onClick={() => toggleFlowInheritance(selectedLineId, selectedUnitId)}
+                          className={`text-xs flex items-center gap-1 ${selectedUnit.flowInherited ? 'text-cyan-400' : 'text-slate-500'}`}>
+                          {selectedUnit.flowInherited ? <Link className="w-3 h-3" /> : <Unlink className="w-3 h-3" />}
+                          {selectedUnit.flowInherited ? '已繼承' : '獨立'}
+                        </button>
+                      </div>
+                      <input type="number" value={selectedUnit.inletFlow} onChange={(e) => updateUnitFlow(selectedLineId, selectedUnitId, 'inletFlow', e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:border-cyan-400" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">出流量 (CMD)</label>
+                      <input type="number" value={selectedUnit.outletFlow} onChange={(e) => updateUnitFlow(selectedLineId, selectedUnitId, 'outletFlow', e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:border-cyan-400" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">總進流量</label>
+                      <div className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-cyan-400 font-medium">{calculateTotalInletFlow(selectedUnit)} CMD</div>
+                    </div>
+                  </div>
+
+                  {/* ==================== 進流與出流並排布局 ==================== */}
+                  <div className="flex gap-4">
+                    {/* 左側：所有進流（新增的在上方） */}
+                    <div className="flex-1 min-w-0 space-y-4">
+                      {/* 額外進流（新增的在最上面） */}
+                      {selectedUnit.additionalInlets.map((inlet, inletIndex) => (
+                        <div key={inlet.id} className="border border-orange-500/30 rounded-lg overflow-hidden">
+                          <div className="flex items-center justify-between p-2 bg-orange-500/10">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{inlet.icon}</span>
+                              <EditableText value={inlet.name} onSave={(newName) => updateAdditionalInlet(selectedLineId, selectedUnitId, inlet.id, 'name', newName)} className="text-sm text-orange-400 font-medium" />
+                            </div>
+                            <button onClick={() => removeAdditionalInlet(selectedLineId, selectedUnitId, inlet.id)} className="text-red-400 hover:text-red-300"><Trash2 className="w-4 h-4" /></button>
+                          </div>
+                          <div className="p-2 bg-orange-500/5">
+                            <div className="flex items-center gap-2 mb-2">
+                              <EditableText value={inlet.flowId} onSave={(newId) => updateAdditionalInlet(selectedLineId, selectedUnitId, inlet.id, 'flowId', newId)} className="text-xs text-orange-400" />
+                              <span className="text-xs text-slate-400">流量:</span>
+                              <input type="number" value={inlet.flow} onChange={(e) => updateAdditionalInlet(selectedLineId, selectedUnitId, inlet.id, 'flow', e.target.value)}
+                                className="w-20 bg-slate-800 border border-orange-500/50 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-orange-400" />
+                              <span className="text-xs text-slate-400">CMD</span>
+                            </div>
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="text-slate-400">
+                                  <th className="text-left py-1 px-2">水質項目</th>
+                                  <th className="text-center py-1 px-2">濃度</th>
+                                  <th className="text-center py-1 px-2">質量</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {reportItems.filter(item => item.enabled).map(item => {
+                                  const conc = inlet.concentrations[item.name] || 0;
+                                  return (
+                                    <tr key={item.id} className="border-t border-slate-700/50">
+                                      <td className="py-1 px-2">{item.name}<span className="text-slate-500 ml-1">({item.unit})</span></td>
+                                      <td className="py-1 px-2 text-center">
+                                        {item.isRange ? '-' : (
+                                          <input type="number" value={conc}
+                                            onChange={(e) => updateAdditionalInlet(selectedLineId, selectedUnitId, inlet.id, 'concentration', { itemName: item.name, conc: e.target.value })}
+                                            className="w-16 bg-slate-800 border border-orange-500/50 rounded px-1 py-0.5 text-center text-white text-xs focus:outline-none focus:border-orange-400" />
+                                        )}
+                                      </td>
+                                      <td className="py-1 px-2 text-center text-orange-400">{item.isRange ? '-' : calculateMass(inlet.flow, conc)}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* 主進流（永遠在最下面） */}
+                      <div className="border border-blue-500/30 rounded-lg overflow-hidden">
+                        <div className="flex items-center justify-between p-2 bg-blue-500/10">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">📥</span>
+                            <span className="text-sm text-blue-400 font-medium">主進流</span>
+                          </div>
+                        </div>
+                        <div className="p-2 bg-blue-500/5">
+                          <div className="flex items-center gap-2 mb-2">
+                            <EditableText value={selectedUnit.inletFlowId} onSave={(newId) => updateFlowId(selectedLineId, selectedUnit.id, 'inletFlowId', newId)} className="text-xs text-blue-400" />
+                            <span className="text-xs text-slate-400">流量: {selectedUnit.inletFlow} CMD</span>
+                          </div>
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="text-slate-400">
+                                <th className="text-left py-1 px-2">水質項目</th>
+                                <th className="text-center py-1 px-2">濃度</th>
+                                <th className="text-center py-1 px-2">質量</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {reportItems.filter(item => item.enabled).map(item => {
+                                const conc = selectedUnit.concentrations[item.name] || { inlet: 0 };
+                                return (
+                                  <tr key={item.id} className="border-t border-slate-700/50">
+                                    <td className="py-1 px-2">{item.name}<span className="text-slate-500 ml-1">({item.unit})</span></td>
+                                    <td className="py-1 px-2 text-center">
+                                      {item.isRange ? <span>{conc.inlet}</span> : (
+                                        <input type="number" value={conc.inlet} onChange={(e) => updateUnitInletConc(selectedLineId, selectedUnitId, item.name, e.target.value)}
+                                          className="w-16 bg-slate-800 border border-blue-500/50 rounded px-1 py-0.5 text-center text-white text-xs focus:outline-none focus:border-blue-400" />
+                                      )}
+                                    </td>
+                                    <td className="py-1 px-2 text-center text-blue-400">{calculateMass(selectedUnit.inletFlow, conc.inlet)}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 右側：出流（維持 v2.0 EMS 格式） */}
+                    <div className="flex-1 min-w-0 border border-green-500/30 rounded-lg overflow-hidden">
+                      <div className="flex items-center justify-between p-2 bg-green-500/10">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">📤</span>
+                          <span className="text-sm text-green-400 font-medium">出流</span>
+                          <EditableText value={selectedUnit.outletFlowId} onSave={(newId) => updateFlowId(selectedLineId, selectedUnit.id, 'outletFlowId', newId)} className="text-xs text-green-400" />
+                        </div>
+                      </div>
+                      <div className="p-2 bg-green-500/5">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-slate-400">
+                              <th className="text-left py-1 px-2" rowSpan={2}>水質項目</th>
+                              <th className="text-center py-1 px-2 border-l border-slate-700" colSpan={2}>進流（混合後）</th>
+                              <th className="text-center py-1 px-2">削減</th>
+                              <th className="text-center py-1 px-2 border-l border-slate-700" colSpan={2}>出流</th>
+                            </tr>
+                            <tr className="text-slate-500 text-xs">
+                              <th className="py-1 px-1 border-l border-slate-700">濃度</th>
+                              <th className="py-1 px-1">質量</th>
+                              <th className="py-1 px-1">(%)</th>
+                              <th className="py-1 px-1 border-l border-slate-700">濃度</th>
+                              <th className="py-1 px-1">質量</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {reportItems.filter(item => item.enabled).map(item => {
+                              const conc = selectedUnit.concentrations[item.name] || { inlet: 0, outlet: 0, removalRate: 0 };
+                              const totalInletMass = calculateTotalInletMass(selectedUnit, item.name);
+                              return (
+                                <tr key={item.id} className="border-t border-slate-700/50">
+                                  <td className="py-1 px-2">{item.name}<span className="text-slate-500 ml-1">({item.unit})</span></td>
+                                  <td className="py-1 px-1 text-center border-l border-slate-700 text-cyan-400">{item.isRange ? conc.inlet : (conc.inlet || 0).toFixed(2)}</td>
+                                  <td className="py-1 px-1 text-center text-cyan-400">{totalInletMass}</td>
+                                  <td className="py-1 px-1 text-center">
+                                    {item.isRange || item.name === 'pH' || item.name === '水溫' ? <span className="text-slate-500">-</span> : (
+                                      <input type="number" value={conc.removalRate} onChange={(e) => updateUnitRemovalRate(selectedLineId, selectedUnitId, item.name, e.target.value)}
+                                        className="w-12 bg-slate-800 border border-slate-600 rounded px-1 py-0.5 text-center text-white text-xs focus:outline-none focus:border-cyan-400" min="0" max="100" />
+                                    )}
+                                  </td>
+                                  <td className="py-1 px-1 text-center border-l border-slate-700 text-green-400">{item.isRange ? conc.outlet : (conc.outlet || 0).toFixed(2)}</td>
+                                  <td className="py-1 px-1 text-center text-green-400">{item.isRange ? '-' : calculateMass(selectedUnit.outletFlow, conc.outlet)}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 p-3 bg-slate-900/50 rounded-lg text-xs text-slate-400">
+                    <p>📝 <strong>v2.4 布局：</strong>進流在左側（新增的往上疊加）｜ 出流在右側並排 ｜ 進流類型：🔄RAS 🧪化學藥劑 💧上清液 🔀其他處理線 📝自訂</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-between">
+                <button onClick={() => setCurrentStep(2)} className="px-6 py-3 bg-slate-700 rounded-lg font-medium hover:bg-slate-600">上一步</button>
+                <button className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg font-medium hover:opacity-90"
+                  onClick={() => alert('匯出功能將在下一階段實作！')}>
+                  <Download className="w-4 h-4" />匯出報表
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {/* Step 4 - 水量平衡圖 (原本遺漏的部分) */}
-        {
-          currentStep === 4 && (
-            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-cyan-400" />水量平衡圖 (Sankey Diagram)
-                </h2>
-              </div>
+        {currentStep === 4 && (
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Activity className="w-5 h-5 text-cyan-400" />水量平衡圖 (Sankey Diagram)
+              </h2>
+            </div>
 
-              {lines.length === 0 ? (
-                <div className="text-center py-20 bg-slate-900/50 rounded-xl border border-dashed border-slate-700">
-                  <p className="text-slate-500 mb-2">尚未建立任何處理線</p>
-                  <button onClick={() => setCurrentStep(3)} className="text-cyan-400 hover:text-cyan-300 underline">
-                    前往建立處理流程
+            {lines.length === 0 ? (
+              <div className="text-center py-20 bg-slate-900/50 rounded-xl border border-dashed border-slate-700">
+                <p className="text-slate-500 mb-2">尚未建立任何處理線</p>
+                <button onClick={() => setCurrentStep(3)} className="text-cyan-400 hover:text-cyan-300 underline">
+                  前往建立處理流程
+                </button>
+              </div>
+            ) : (
+              <div>
+                {/* 圖表類型切換 */}
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => setDiagramType('reactflow')}
+                    className={`px-4 py-2 rounded-lg text-sm transition-all ${diagramType === 'reactflow'
+                      ? 'bg-cyan-500/20 border border-cyan-400/50 text-cyan-400'
+                      : 'bg-slate-700 border border-slate-600 text-slate-400 hover:bg-slate-600'
+                      }`}
+                  >
+                    🖱️ 可拖曳流程圖
+                  </button>
+                  <button
+                    onClick={() => setDiagramType('pfd')}
+                    className={`px-4 py-2 rounded-lg text-sm transition-all ${diagramType === 'pfd'
+                      ? 'bg-cyan-500/20 border border-cyan-400/50 text-cyan-400'
+                      : 'bg-slate-700 border border-slate-600 text-slate-400 hover:bg-slate-600'
+                      }`}
+                  >
+                    📐 靜態流程圖
+                  </button>
+                  <button
+                    onClick={() => setDiagramType('sankey')}
+                    className={`px-4 py-2 rounded-lg text-sm transition-all ${diagramType === 'sankey'
+                      ? 'bg-cyan-500/20 border border-cyan-400/50 text-cyan-400'
+                      : 'bg-slate-700 border border-slate-600 text-slate-400 hover:bg-slate-600'
+                      }`}
+                  >
+                    📊 Sankey 圖
                   </button>
                 </div>
-              ) : (
-                <div>
-                  {/* 圖表類型切換 */}
-                  <div className="flex gap-2 mb-4">
-                    <button
-                      onClick={() => setDiagramType('reactflow')}
-                      className={`px-4 py-2 rounded-lg text-sm transition-all ${diagramType === 'reactflow'
-                        ? 'bg-cyan-500/20 border border-cyan-400/50 text-cyan-400'
-                        : 'bg-slate-700 border border-slate-600 text-slate-400 hover:bg-slate-600'
-                        }`}
-                    >
-                      🖱️ 可拖曳流程圖
-                    </button>
-                    <button
-                      onClick={() => setDiagramType('pfd')}
-                      className={`px-4 py-2 rounded-lg text-sm transition-all ${diagramType === 'pfd'
-                        ? 'bg-cyan-500/20 border border-cyan-400/50 text-cyan-400'
-                        : 'bg-slate-700 border border-slate-600 text-slate-400 hover:bg-slate-600'
-                        }`}
-                    >
-                      📐 靜態流程圖
-                    </button>
-                    <button
-                      onClick={() => setDiagramType('sankey')}
-                      className={`px-4 py-2 rounded-lg text-sm transition-all ${diagramType === 'sankey'
-                        ? 'bg-cyan-500/20 border border-cyan-400/50 text-cyan-400'
-                        : 'bg-slate-700 border border-slate-600 text-slate-400 hover:bg-slate-600'
-                        }`}
-                    >
-                      📊 Sankey 圖
-                    </button>
-                  </div>
 
-                  {/* 根據選擇顯示對應圖表 */}
-                  {diagramType === 'reactflow' && <ReactFlowDiagram lines={lines} />}
-                  {diagramType === 'pfd' && <ProcessFlowDiagram lines={lines} />}
-                  {diagramType === 'sankey' && (
-                    <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50 overflow-hidden">
-                      <SankeyChart lines={lines} />
-                      <div className="mt-4 flex gap-4 text-xs text-slate-500 justify-center">
-                        <span className="flex items-center gap-1"><span className="w-3 h-1 bg-[#10B981]"></span> 綠色實線：廢水流向</span>
-                        <span className="flex items-center gap-1"><span className="w-3 h-1 bg-[#F59E0B] border-t border-dashed border-[#F59E0B]"></span> 橘色虛線：污泥回流(RAS)</span>
-                      </div>
+                {/* 根據選擇顯示對應圖表 */}
+                {diagramType === 'reactflow' && <ReactFlowDiagram lines={lines} />}
+                {diagramType === 'pfd' && <ProcessFlowDiagram lines={lines} />}
+                {diagramType === 'sankey' && (
+                  <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50 overflow-hidden">
+                    <SankeyChart lines={lines} />
+                    <div className="mt-4 flex gap-4 text-xs text-slate-500 justify-center">
+                      <span className="flex items-center gap-1"><span className="w-3 h-1 bg-[#10B981]"></span> 綠色實線：廢水流向</span>
+                      <span className="flex items-center gap-1"><span className="w-3 h-1 bg-[#F59E0B] border-t border-dashed border-[#F59E0B]"></span> 橘色虛線：污泥回流(RAS)</span>
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
+            )}
 
-              <div className="mt-6 flex justify-between">
-                <button onClick={() => setCurrentStep(3)} className="px-6 py-3 bg-slate-700 rounded-lg font-medium hover:bg-slate-600">
-                  上一步
-                </button>
-                <div className="flex gap-2">
-                  {/* 預留匯出按鈕位置 */}
-                </div>
+            <div className="mt-6 flex justify-between">
+              <button onClick={() => setCurrentStep(3)} className="px-6 py-3 bg-slate-700 rounded-lg font-medium hover:bg-slate-600">
+                上一步
+              </button>
+              <div className="flex gap-2">
+                {/* 預留匯出按鈕位置 */}
               </div>
             </div>
-          )
-        }
-      </div >
+          </div>
+        )}
+      </div>
 
       <footer className="mt-12 py-6 border-t border-slate-700/50 text-center text-slate-500 text-sm">
         <p>Nick Chang｜ZN Studio</p>
@@ -930,6 +1181,6 @@ export default function WastewaterCalculator() {
           <a href="https://reurl.cc/1OZNAY" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400">Line 社群</a>
         </p>
       </footer>
-    </div >
+    </div>
   );
 }
