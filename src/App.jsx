@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Calculator, FileText, Download, Building2, Droplets, ArrowRight, Check, X, Edit2, RotateCcw, Link, Unlink, Activity } from 'lucide-react';
 import SankeyChart from './components/SankeyChart';
+import ProcessFlowDiagram from './components/ProcessFlowDiagram';
+import ReactFlowDiagram from './components/ReactFlowDiagram';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -103,6 +105,9 @@ export default function WastewaterCalculator() {
 
   // 新增進流 Modal 狀態
   const [showInletModal, setShowInletModal] = useState(false);
+
+  // 圖表類型切換狀態
+  const [diagramType, setDiagramType] = useState('reactflow'); // 'reactflow' or 'pfd'
 
   // 當選擇事業類別時，自動帶入申報項目
   const handleBusinessTypeChange = (type) => {
