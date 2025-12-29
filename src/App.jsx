@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Trash2, Calculator, FileText, Download, Building2, Droplets, ArrowRight, Check, X, Edit2, RotateCcw, Link, Unlink, Activity } from 'lucide-react';
 import SankeyChart from './components/SankeyChart';
 import ProcessFlowDiagram from './components/ProcessFlowDiagram';
+import ReactFlowDiagram from './components/ReactFlowDiagram';
 
 // ============================================
 // 事業類別與申報項目資料庫
@@ -103,7 +104,7 @@ export default function WastewaterCalculator() {
   const [showInletModal, setShowInletModal] = useState(false);
 
   // 圖表類型切換狀態
-  const [diagramType, setDiagramType] = useState('pfd'); // 'pfd' or 'sankey'
+  const [diagramType, setDiagramType] = useState('reactflow'); // 'reactflow', 'pfd' or 'sankey'
 
   // 當選擇事業類別時，自動帶入申報項目
   const handleBusinessTypeChange = (type) => {
@@ -1045,19 +1046,28 @@ export default function WastewaterCalculator() {
                 {/* 圖表類型切換 */}
                 <div className="flex gap-2 mb-4">
                   <button
-                    onClick={() => setDiagramType('pfd')}
-                    className={`px-4 py-2 rounded-lg text-sm transition-all ${diagramType === 'pfd'
-                        ? 'bg-cyan-500/20 border border-cyan-400/50 text-cyan-400'
-                        : 'bg-slate-700 border border-slate-600 text-slate-400 hover:bg-slate-600'
+                    onClick={() => setDiagramType('reactflow')}
+                    className={`px-4 py-2 rounded-lg text-sm transition-all ${diagramType === 'reactflow'
+                      ? 'bg-cyan-500/20 border border-cyan-400/50 text-cyan-400'
+                      : 'bg-slate-700 border border-slate-600 text-slate-400 hover:bg-slate-600'
                       }`}
                   >
-                    📐 流程圖 (PFD)
+                    🖱️ 可拖曳流程圖
+                  </button>
+                  <button
+                    onClick={() => setDiagramType('pfd')}
+                    className={`px-4 py-2 rounded-lg text-sm transition-all ${diagramType === 'pfd'
+                      ? 'bg-cyan-500/20 border border-cyan-400/50 text-cyan-400'
+                      : 'bg-slate-700 border border-slate-600 text-slate-400 hover:bg-slate-600'
+                      }`}
+                  >
+                    📐 靜態流程圖
                   </button>
                   <button
                     onClick={() => setDiagramType('sankey')}
                     className={`px-4 py-2 rounded-lg text-sm transition-all ${diagramType === 'sankey'
-                        ? 'bg-cyan-500/20 border border-cyan-400/50 text-cyan-400'
-                        : 'bg-slate-700 border border-slate-600 text-slate-400 hover:bg-slate-600'
+                      ? 'bg-cyan-500/20 border border-cyan-400/50 text-cyan-400'
+                      : 'bg-slate-700 border border-slate-600 text-slate-400 hover:bg-slate-600'
                       }`}
                   >
                     📊 Sankey 圖
@@ -1065,9 +1075,9 @@ export default function WastewaterCalculator() {
                 </div>
 
                 {/* 根據選擇顯示對應圖表 */}
-                {diagramType === 'pfd' ? (
-                  <ProcessFlowDiagram lines={lines} />
-                ) : (
+                {diagramType === 'reactflow' && <ReactFlowDiagram lines={lines} />}
+                {diagramType === 'pfd' && <ProcessFlowDiagram lines={lines} />}
+                {diagramType === 'sankey' && (
                   <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50 overflow-hidden">
                     <SankeyChart lines={lines} />
                     <div className="mt-4 flex gap-4 text-xs text-slate-500 justify-center">
