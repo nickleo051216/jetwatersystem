@@ -3,6 +3,9 @@ import { Plus, Trash2, Calculator, FileText, Download, Building2, Droplets, Arro
 import SankeyChart from './components/SankeyChart';
 import ProcessFlowDiagram from './components/ProcessFlowDiagram';
 import ReactFlowDiagram from './components/ReactFlowDiagram';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // ============================================
 // 事業類別與申報項目資料庫
@@ -492,6 +495,71 @@ export default function WastewaterCalculator() {
   const selectedLine = lines.find(l => l.id === selectedLineId);
   const selectedUnit = selectedLine?.units.find(u => u.id === selectedUnitId);
 
+  // DnD 感應器設定
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  // 單元重新排序
+  const reorderUnits = (lineId, oldIndex, newIndex) => {
+    setLines(lines.map(line => {
+      if (line.id === lineId) {
+        const newUnits = arrayMove(line.units, oldIndex, newIndex);
+        // 更新 flowId
+        newUnits.forEach((unit, idx) => {
+          unit.flowId = `T${idx + 1}`;
+        });
+        return { ...line, units: newUnits };
+      }
+      return line;
+    }));
+  };
+
+  // 拖放結束處理
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (active.id !== over?.id && selectedLineId) {
+      const oldIndex = selectedLine.units.findIndex(u => u.id === active.id);
+      const newIndex = selectedLine.units.findIndex(u => u.id === over.id);
+      if (oldIndex !== -1 && newIndex !== -1) {
+        reorderUnits(selectedLineId, oldIndex, newIndex);
+      }
+    }
+  };
+
+  // 可拖曳單元卡片元件
+  const SortableUnitCard = ({ unit, index, isSelected, onClick }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: unit.id });
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      zIndex: isDragging ? 50 : 1,
+      opacity: isDragging ? 0.8 : 1,
+    };
+
+    return (
+      <button
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+        onClick={onClick}
+        className={`flex-shrink-0 p-3 rounded-lg border min-w-[80px] cursor-grab active:cursor-grabbing ${isSelected ? 'bg-cyan-500/20 border-cyan-400' : 'bg-slate-700/50 border-slate-600 hover:border-cyan-400/50'
+          } ${isDragging ? 'shadow-lg ring-2 ring-cyan-400' : ''}`}
+      >
+        <div className="text-2xl text-center">{unit.icon}</div>
+        <p className="text-xs mt-1 text-center truncate">{unit.name}</p>
+        <p className="text-xs text-slate-500">{unit.flowId}</p>
+        {unit.additionalInlets.length > 0 && (
+          <div className="flex items-center justify-center gap-1 mt-1">
+            <Plus className="w-3 h-3 text-orange-400" /><span className="text-xs text-orange-400">{unit.additionalInlets.length}</span>
+          </div>
+        )}
+      </button>
+    );
+  };
+
   // 可編輯文字元件
   const EditableText = ({ value, onSave, className = "" }) => {
     const [isEditing, setIsEditing] = useState(false);
@@ -797,24 +865,24 @@ export default function WastewaterCalculator() {
                   {selectedLine.units.length === 0 ? (
                     <div className="text-center py-8 text-slate-500"><p className="text-sm">尚未建立處理單元</p></div>
                   ) : (
-                    <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                      {selectedLine.units.map((unit, index) => (
-                        <React.Fragment key={unit.id}>
-                          <button onClick={() => setSelectedUnitId(unit.id)}
-                            className={`flex-shrink-0 p-3 rounded-lg border min-w-[80px] ${selectedUnitId === unit.id ? 'bg-cyan-500/20 border-cyan-400' : 'bg-slate-700/50 border-slate-600 hover:border-cyan-400/50'}`}>
-                            <div className="text-2xl text-center">{unit.icon}</div>
-                            <p className="text-xs mt-1 text-center truncate">{unit.name}</p>
-                            <p className="text-xs text-slate-500">{unit.flowId}</p>
-                            {unit.additionalInlets.length > 0 && (
-                              <div className="flex items-center justify-center gap-1 mt-1">
-                                <Plus className="w-3 h-3 text-orange-400" /><span className="text-xs text-orange-400">{unit.additionalInlets.length}</span>
-                              </div>
-                            )}
-                          </button>
-                          {index < selectedLine.units.length - 1 && <ArrowRight className="w-4 h-4 text-slate-500 flex-shrink-0" />}
-                        </React.Fragment>
-                      ))}
-                    </div>
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                      <SortableContext items={selectedLine.units.map(u => u.id)} strategy={horizontalListSortingStrategy}>
+                        <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                          <p className="text-xs text-slate-500 mr-2">拖曳調整順序 →</p>
+                          {selectedLine.units.map((unit, index) => (
+                            <React.Fragment key={unit.id}>
+                              <SortableUnitCard
+                                unit={unit}
+                                index={index}
+                                isSelected={selectedUnitId === unit.id}
+                                onClick={() => setSelectedUnitId(unit.id)}
+                              />
+                              {index < selectedLine.units.length - 1 && <ArrowRight className="w-4 h-4 text-slate-500 flex-shrink-0" />}
+                            </React.Fragment>
+                          ))}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
                   )}
                 </div>
               )}
