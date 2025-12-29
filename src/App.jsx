@@ -106,9 +106,6 @@ export default function WastewaterCalculator() {
   // 新增進流 Modal 狀態
   const [showInletModal, setShowInletModal] = useState(false);
 
-  // 圖表類型切換狀態
-  const [diagramType, setDiagramType] = useState('reactflow'); // 'reactflow', 'pfd' or 'sankey'
-
   // 當選擇事業類別時，自動帶入申報項目
   const handleBusinessTypeChange = (type) => {
     setBusinessType(type);
@@ -1110,50 +1107,12 @@ export default function WastewaterCalculator() {
                 </button>
               </div>
             ) : (
-              <div>
-                {/* 圖表類型切換 */}
-                <div className="flex gap-2 mb-4">
-                  <button
-                    onClick={() => setDiagramType('reactflow')}
-                    className={`px-4 py-2 rounded-lg text-sm transition-all ${diagramType === 'reactflow'
-                      ? 'bg-cyan-500/20 border border-cyan-400/50 text-cyan-400'
-                      : 'bg-slate-700 border border-slate-600 text-slate-400 hover:bg-slate-600'
-                      }`}
-                  >
-                    🖱️ 可拖曳流程圖
-                  </button>
-                  <button
-                    onClick={() => setDiagramType('pfd')}
-                    className={`px-4 py-2 rounded-lg text-sm transition-all ${diagramType === 'pfd'
-                      ? 'bg-cyan-500/20 border border-cyan-400/50 text-cyan-400'
-                      : 'bg-slate-700 border border-slate-600 text-slate-400 hover:bg-slate-600'
-                      }`}
-                  >
-                    📐 靜態流程圖
-                  </button>
-                  <button
-                    onClick={() => setDiagramType('sankey')}
-                    className={`px-4 py-2 rounded-lg text-sm transition-all ${diagramType === 'sankey'
-                      ? 'bg-cyan-500/20 border border-cyan-400/50 text-cyan-400'
-                      : 'bg-slate-700 border border-slate-600 text-slate-400 hover:bg-slate-600'
-                      }`}
-                  >
-                    📊 Sankey 圖
-                  </button>
+              <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50 overflow-hidden">
+                <SankeyChart lines={lines} />
+                <div className="mt-4 flex gap-4 text-xs text-slate-500 justify-center">
+                  <span className="flex items-center gap-1"><span className="w-3 h-1 bg-[#10B981]"></span> 綠色實線：廢水流向</span>
+                  <span className="flex items-center gap-1"><span className="w-3 h-1 bg-[#F59E0B] border-t border-dashed border-[#F59E0B]"></span> 橘色虛線：污泥回流(RAS)</span>
                 </div>
-
-                {/* 根據選擇顯示對應圖表 */}
-                {diagramType === 'reactflow' && <ReactFlowDiagram lines={lines} />}
-                {diagramType === 'pfd' && <ProcessFlowDiagram lines={lines} />}
-                {diagramType === 'sankey' && (
-                  <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50 overflow-hidden">
-                    <SankeyChart lines={lines} />
-                    <div className="mt-4 flex gap-4 text-xs text-slate-500 justify-center">
-                      <span className="flex items-center gap-1"><span className="w-3 h-1 bg-[#10B981]"></span> 綠色實線：廢水流向</span>
-                      <span className="flex items-center gap-1"><span className="w-3 h-1 bg-[#F59E0B] border-t border-dashed border-[#F59E0B]"></span> 橘色虛線：污泥回流(RAS)</span>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
