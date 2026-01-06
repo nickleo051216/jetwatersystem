@@ -724,12 +724,15 @@ export default function WastewaterCalculator() {
     return total;
   };
 
-  // 計算總進流質量
+  // 計算總進流質量（使用混合後濃度 × 總進流量，確保與出流質量一致）
   const calculateTotalInletMass = (unit, itemName) => {
     if (!unit || !itemName) return 0;
     const item = reportItems.find(i => i.name === itemName);
     if (item?.isRange) return '-';
-    const mainMass = calculateMass(unit.inletFlow, unit.concentrations[itemName]?.inlet || 0);
+
+    // 使用各進流質量加總的方式計算
+    const mainInletConc = unit.concentrations[itemName]?.inlet || 0;
+    const mainMass = calculateMass(unit.inletFlow, mainInletConc);
     let additionalMass = 0;
     unit.additionalInlets.forEach(inlet => {
       additionalMass += calculateMass(inlet.flow, inlet.concentrations[itemName] || 0);
@@ -1443,7 +1446,7 @@ export default function WastewaterCalculator() {
                                       )}
                                     </td>
                                     <td className="py-1 px-1 text-center border-l border-slate-700 text-green-400">{item.isRange ? conc.outlet : (conc.outlet || 0).toFixed(2)}</td>
-                                    <td className="py-1 px-1 text-center text-green-400">{item.isRange ? '-' : calculateMass(calculateTotalInletFlow(selectedUnit), conc.outlet)}</td>
+                                    <td className="py-1 px-1 text-center text-green-400">{item.isRange ? '-' : (typeof totalInletMass === 'number' ? Number((totalInletMass * (1 - (conc.removalRate || 0) / 100)).toFixed(3)) : '-')}</td>
                                   </tr>
                                 );
                               })}
