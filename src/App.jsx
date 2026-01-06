@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Calculator, FileText, Download, Building2, Droplets, ArrowRight, Check, X, Edit2, RotateCcw, Link, Unlink, Activity } from 'lucide-react';
 import ProcessFlowDiagram from './components/ProcessFlowDiagram';
 import ReactFlowDiagram from './components/ReactFlowDiagram';
@@ -86,13 +86,31 @@ const INLET_TYPES = {
 // ============================================
 // 主應用程式
 // ============================================
+// localStorage 儲存 key
+const STORAGE_KEY = 'wastewater-calculator-data';
+
 export default function WastewaterCalculator() {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [facilityName, setFacilityName] = useState('');
-  const [businessType, setBusinessType] = useState('');
-  const [designFlow, setDesignFlow] = useState(1000);
-  const [reportItems, setReportItems] = useState([]);
-  const [lines, setLines] = useState([]);
+  // 從 localStorage 載入初始資料
+  const loadFromStorage = () => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error('載入儲存資料失敗:', e);
+    }
+    return null;
+  };
+
+  const savedData = loadFromStorage();
+
+  const [currentStep, setCurrentStep] = useState(savedData?.currentStep || 1);
+  const [facilityName, setFacilityName] = useState(savedData?.facilityName || '');
+  const [businessType, setBusinessType] = useState(savedData?.businessType || '');
+  const [designFlow, setDesignFlow] = useState(savedData?.designFlow || 1000);
+  const [reportItems, setReportItems] = useState(savedData?.reportItems || []);
+  const [lines, setLines] = useState(savedData?.lines || []);
   const [selectedLineId, setSelectedLineId] = useState(null);
   const [selectedUnitId, setSelectedUnitId] = useState(null);
 
@@ -107,6 +125,39 @@ export default function WastewaterCalculator() {
 
   // 圖表類型切換狀態
   const [diagramType, setDiagramType] = useState('reactflow'); // 'reactflow' or 'pfd'
+
+  // 自動儲存到 localStorage
+  useEffect(() => {
+    const dataToSave = {
+      currentStep,
+      facilityName,
+      businessType,
+      designFlow,
+      reportItems,
+      lines,
+      savedAt: new Date().toISOString()
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+    } catch (e) {
+      console.error('儲存資料失敗:', e);
+    }
+  }, [currentStep, facilityName, businessType, designFlow, reportItems, lines]);
+
+  // 清除所有資料
+  const clearAllData = () => {
+    if (window.confirm('確定要清除所有資料嗎？此操作無法復原！')) {
+      localStorage.removeItem(STORAGE_KEY);
+      setCurrentStep(1);
+      setFacilityName('');
+      setBusinessType('');
+      setDesignFlow(1000);
+      setReportItems([]);
+      setLines([]);
+      setSelectedLineId(null);
+      setSelectedUnitId(null);
+    }
+  };
 
   // 當選擇事業類別時，自動帶入申報項目
   const handleBusinessTypeChange = (type) => {
@@ -618,12 +669,17 @@ export default function WastewaterCalculator() {
               </div>
               <div>
                 <h1 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">污水處理設施計算系統</h1>
-                <p className="text-xs text-slate-400">Wastewater Treatment Calculator v2.4</p>
+                <p className="text-xs text-slate-400">Wastewater Treatment Calculator v2.5</p>
               </div>
             </div>
-            <div className="text-right text-xs text-slate-400">
-              <p>Nick Chang｜ZN Studio</p>
-              <p>nickleo051216@gmail.com</p>
+            <div className="flex items-center gap-4">
+              <button onClick={clearAllData} className="flex items-center gap-1 px-3 py-1.5 bg-red-500/20 border border-red-400/50 rounded-lg text-red-400 text-xs hover:bg-red-500/30 transition-all">
+                <Trash2 className="w-3 h-3" />清除資料
+              </button>
+              <div className="text-right text-xs text-slate-400">
+                <p>Nick Chang｜ZN Studio</p>
+                <p>nickleo051216@gmail.com</p>
+              </div>
             </div>
           </div>
         </div>
