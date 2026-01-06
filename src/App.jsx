@@ -572,7 +572,8 @@ export default function WastewaterCalculator() {
             }
             const removalRate = unit.removalRates[item.name] || 0;
             const outletConc = item.isRange ? mixedInletConc : Number((mixedInletConc * (1 - removalRate / 100)).toFixed(3));
-            updatedConcentrations[item.name] = { inlet: Number(mixedInletConc.toFixed(3)), outlet: outletConc, removalRate };
+            const inletConcValue = item.isRange ? mixedInletConc : Number(Number(mixedInletConc).toFixed(3));
+            updatedConcentrations[item.name] = { inlet: inletConcValue, outlet: outletConc, removalRate };
           });
 
           prevUnit = { ...unit, concentrations: updatedConcentrations };
@@ -603,7 +604,8 @@ export default function WastewaterCalculator() {
         }
         const removalRate = unit.removalRates[item.name] || 0;
         const outletConc = item.isRange ? mixedInletConc : Number((mixedInletConc * (1 - removalRate / 100)).toFixed(3));
-        updatedConcentrations[item.name] = { inlet: Number(mixedInletConc.toFixed(3)), outlet: outletConc, removalRate };
+        const inletConcValue = item.isRange ? mixedInletConc : Number(Number(mixedInletConc).toFixed(3));
+        updatedConcentrations[item.name] = { inlet: inletConcValue, outlet: outletConc, removalRate };
       });
 
       prevUnit = { ...unit, concentrations: updatedConcentrations };
