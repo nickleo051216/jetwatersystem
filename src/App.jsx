@@ -1065,7 +1065,7 @@ export default function WastewaterCalculator() {
                                     )}
                                   </td>
                                   <td className="py-1 px-1 text-center border-l border-slate-700 text-green-400">{item.isRange ? conc.outlet : (conc.outlet || 0).toFixed(2)}</td>
-                                  <td className="py-1 px-1 text-center text-green-400">{item.isRange ? '-' : calculateMass(selectedUnit.outletFlow, conc.outlet)}</td>
+                                  <td className="py-1 px-1 text-center text-green-400">{item.isRange ? '-' : calculateMass(calculateTotalInletFlow(selectedUnit), conc.outlet)}</td>
                                 </tr>
                               );
                             })}
