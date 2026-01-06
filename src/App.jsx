@@ -527,12 +527,13 @@ export default function WastewaterCalculator() {
     }));
   };
 
-  // 新增額外進流（帶類型）
+  // 新增額外進流（帶類型）- 需要先定義在 recalculateLineConcentrations 之後
+  // 注意：這個函式內會直接內嵌計算邏輯，因為在函式定義順序上的限制
   const addAdditionalInlet = (lineId, unitId, inletType) => {
     const typeConfig = INLET_TYPES[inletType];
     setLines(lines.map(line => {
       if (line.id === lineId) {
-        return {
+        const updatedLine = {
           ...line,
           units: line.units.map(unit => {
             if (unit.id === unitId) {
@@ -549,23 +550,73 @@ export default function WastewaterCalculator() {
               reportItems.filter(item => item.enabled).forEach(item => {
                 newInlet.concentrations[item.name] = 0;
               });
-              // 新增的進流放在陣列最前面（往上新增）
               return { ...unit, additionalInlets: [newInlet, ...unit.additionalInlets] };
             }
             return unit;
           })
         };
+
+        // 內嵌重新計算混合濃度
+        let prevUnit = null;
+        const recalculatedUnits = updatedLine.units.map(unit => {
+          const updatedConcentrations = {};
+          const totalInletFlow = unit.inletFlow + unit.additionalInlets.reduce((sum, inlet) => sum + inlet.flow, 0);
+
+          reportItems.filter(item => item.enabled).forEach(item => {
+            const mainInletConc = prevUnit ? (prevUnit.concentrations[item.name]?.outlet || item.concentration) : (unit.concentrations[item.name]?.inlet || item.concentration);
+            let mixedInletConc = mainInletConc;
+            if (unit.additionalInlets.length > 0 && !item.isRange && totalInletFlow > 0) {
+              let totalMass = unit.inletFlow * mainInletConc;
+              unit.additionalInlets.forEach(inlet => { totalMass += inlet.flow * (inlet.concentrations[item.name] || 0); });
+              mixedInletConc = totalMass / totalInletFlow;
+            }
+            const removalRate = unit.removalRates[item.name] || 0;
+            const outletConc = item.isRange ? mixedInletConc : Number((mixedInletConc * (1 - removalRate / 100)).toFixed(3));
+            updatedConcentrations[item.name] = { inlet: Number(mixedInletConc.toFixed(3)), outlet: outletConc, removalRate };
+          });
+
+          prevUnit = { ...unit, concentrations: updatedConcentrations };
+          return { ...unit, concentrations: updatedConcentrations };
+        });
+
+        return { ...updatedLine, units: recalculatedUnits };
       }
       return line;
     }));
     setShowInletModal(false);
   };
 
+  // 重新計算單一處理線的混合濃度（內部輔助函式）
+  const recalculateLineConcentrations = (line) => {
+    let prevUnit = null;
+    const recalculatedUnits = line.units.map(unit => {
+      const updatedConcentrations = {};
+      const totalInletFlow = unit.inletFlow + unit.additionalInlets.reduce((sum, inlet) => sum + inlet.flow, 0);
+
+      reportItems.filter(item => item.enabled).forEach(item => {
+        const mainInletConc = prevUnit ? (prevUnit.concentrations[item.name]?.outlet || item.concentration) : (unit.concentrations[item.name]?.inlet || item.concentration);
+        let mixedInletConc = mainInletConc;
+        if (unit.additionalInlets.length > 0 && !item.isRange && totalInletFlow > 0) {
+          let totalMass = unit.inletFlow * mainInletConc;
+          unit.additionalInlets.forEach(inlet => { totalMass += inlet.flow * (inlet.concentrations[item.name] || 0); });
+          mixedInletConc = totalMass / totalInletFlow;
+        }
+        const removalRate = unit.removalRates[item.name] || 0;
+        const outletConc = item.isRange ? mixedInletConc : Number((mixedInletConc * (1 - removalRate / 100)).toFixed(3));
+        updatedConcentrations[item.name] = { inlet: Number(mixedInletConc.toFixed(3)), outlet: outletConc, removalRate };
+      });
+
+      prevUnit = { ...unit, concentrations: updatedConcentrations };
+      return { ...unit, concentrations: updatedConcentrations };
+    });
+    return { ...line, units: recalculatedUnits };
+  };
+
   // 刪除額外進流
   const removeAdditionalInlet = (lineId, unitId, inletId) => {
     setLines(lines.map(line => {
       if (line.id === lineId) {
-        return {
+        const updatedLine = {
           ...line,
           units: line.units.map(unit => {
             if (unit.id === unitId) {
@@ -574,6 +625,7 @@ export default function WastewaterCalculator() {
             return unit;
           })
         };
+        return recalculateLineConcentrations(updatedLine);
       }
       return line;
     }));
@@ -583,7 +635,7 @@ export default function WastewaterCalculator() {
   const updateAdditionalInlet = (lineId, unitId, inletId, field, value) => {
     setLines(lines.map(line => {
       if (line.id === lineId) {
-        return {
+        const updatedLine = {
           ...line,
           units: line.units.map(unit => {
             if (unit.id === unitId) {
@@ -603,6 +655,7 @@ export default function WastewaterCalculator() {
             return unit;
           })
         };
+        return recalculateLineConcentrations(updatedLine);
       }
       return line;
     }));
